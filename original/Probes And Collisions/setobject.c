@@ -181,12 +181,14 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     freeslot->hash = hash;
     so->fill++;
 
+    if (PyLong_CheckExact(key)) {
     printf("Inserting key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu\n", hash);
     printf("Number of linear probes: %d\n", so->num_linear_probes);
     printf("Number of random probes: %d\n", so->num_random_probes);
     printf("Number of collisions: %d\n", so->num_collisions);
+    }
 
 
     return 0;
@@ -197,12 +199,14 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     entry->hash = hash;
     so->fill++;
 
+    if (PyLong_CheckExact(key)) {
     printf("Inserting key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu\n", hash);
     printf("Number of linear probes: %d\n", so->num_linear_probes);
     printf("Number of random probes: %d\n", so->num_random_probes);
     printf("Number of collisions: %d\n", so->num_collisions);
+    }
 
     if ((size_t)so->fill*5 < mask*3) {
         return 0;
@@ -212,12 +216,14 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     found_active:
     Py_DECREF(key);
 
+    if (PyLong_CheckExact(key)) {
     printf("Already found key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu\n", hash);
     printf("Number of linear probes: %d\n", so->num_linear_probes);
     printf("Number of random probes: %d\n", so->num_random_probes);
     printf("Number of collisions: %d\n", so->num_collisions);
+    }
 
 
     return 0;
