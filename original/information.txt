@@ -1,1 +1,6 @@
 
+The purpose of this directory is to analyze the number of linear probes, random probes and collisions in the set.
+
+This is seen in set_look_entry and set_add_entry.
+
+Precisely lines 56 and 107 , respectively.
