@@ -1,1 +1,2 @@
-
+In this directory, all the study is done without taking into consideration the resize process, thus this aspect is removed.
+Hence, the hash table of the setobject is initially given a size *M* , and the study performed without ever exceeding the established limit of the size of the table.
