@@ -46,7 +46,7 @@ static PyObject _dummy_struct;
 
 /* Set this to zero to turn-off linear probing */
 #ifndef LINEAR_PROBES
-#define LINEAR_PROBES 7
+#define LINEAR_PROBES 1
 #endif
 
 /* This must be >= 1 */
@@ -63,9 +63,11 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
     int probes;
     int cmp;
 
+
     while (1) {
         entry = &so->table[i];
         probes = (i + LINEAR_PROBES <= mask) ? LINEAR_PROBES: 0;
+
         do {
             if (entry->hash == 0 && entry->key == NULL)
                 return entry;
@@ -99,6 +101,7 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
         perturb >>= PERTURB_SHIFT;
         i = (i * 5 + 1 + perturb) & mask;
         so->num_random_probes++;
+        so->num_collisions++;
     }
 }
 
@@ -130,6 +133,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     while (1) {
         entry = &so->table[i];
         probes = (i + LINEAR_PROBES <= mask) ? LINEAR_PROBES: 0;
+
         do {
             if (entry->hash == 0 && entry->key == NULL) {
                 goto found_unused_or_dummy;
@@ -169,6 +173,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
             so->num_collisions++;
         } while (probes--);
         so->num_random_probes++;
+        so->num_collisions++;
         perturb >>= PERTURB_SHIFT;
         i = (i * 5 + 1 + perturb) & mask;
     }
@@ -182,7 +187,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     freeslot->hash = hash;
     so->fill++;
 
-    if (PyLong_CheckExact(key) && so->fill > 65534) {
+    if (PyLong_CheckExact(key) ) {
     printf("Inserting key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
@@ -200,7 +205,8 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     entry->hash = hash;
     so->fill++;
 
-    if (PyLong_CheckExact(key) && so->fill > 65534) {
+
+    if (PyLong_CheckExact(key) ) {
     printf("Inserting key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
@@ -217,7 +223,8 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     found_active:
     Py_DECREF(key);
 
-    if (PyLong_CheckExact(key) && so->fill > 65534) {
+
+    if (PyLong_CheckExact(key) ) {
     printf("Already found key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
