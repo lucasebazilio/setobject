@@ -46,7 +46,7 @@ static PyObject _dummy_struct;
 
 /* Set this to zero to turn-off linear probing */
 #ifndef LINEAR_PROBES
-#define LINEAR_PROBES 1
+#define LINEAR_PROBES 9
 #endif
 
 /* This must be >= 1 */
@@ -63,11 +63,9 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
     int probes;
     int cmp;
 
-
     while (1) {
         entry = &so->table[i];
         probes = (i + LINEAR_PROBES <= mask) ? LINEAR_PROBES: 0;
-
         do {
             if (entry->hash == 0 && entry->key == NULL)
                 return entry;
@@ -93,15 +91,13 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
                     return entry;
                 mask = so->mask;
             }
-
             so->num_linear_probes++;
-            so->num_collisions++;
+
             entry++;
         } while (probes--);
         perturb >>= PERTURB_SHIFT;
         i = (i * 5 + 1 + perturb) & mask;
         so->num_random_probes++;
-        so->num_collisions++;
     }
 }
 
@@ -133,7 +129,6 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     while (1) {
         entry = &so->table[i];
         probes = (i + LINEAR_PROBES <= mask) ? LINEAR_PROBES: 0;
-
         do {
             if (entry->hash == 0 && entry->key == NULL) {
                 goto found_unused_or_dummy;
@@ -142,7 +137,6 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
                 PyObject *startkey = entry->key;
                 assert(startkey != dummy);
                 if (startkey == key) {
-                    so->num_collisions++;
                     goto found_active;
                 }
                 if (PyUnicode_CheckExact(startkey)
@@ -170,10 +164,9 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
             }
             entry++;
             so->num_linear_probes++;
-            so->num_collisions++;
+
         } while (probes--);
         so->num_random_probes++;
-        so->num_collisions++;
         perturb >>= PERTURB_SHIFT;
         i = (i * 5 + 1 + perturb) & mask;
     }
@@ -187,7 +180,12 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     freeslot->hash = hash;
     so->fill++;
 
-    if (PyLong_CheckExact(key) ) {
+    if (entry != freeslot) {
+        so->num_collisions++;
+    }
+
+
+    if (PyLong_CheckExact(key) && so->fill > 65534) {
     printf("Inserting key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
@@ -205,8 +203,12 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     entry->hash = hash;
     so->fill++;
 
+     if (freeslot != NULL) {
+        so->num_collisions++;
+    }
 
-    if (PyLong_CheckExact(key) ) {
+
+    if (PyLong_CheckExact(key) && so->fill > 65534) {
     printf("Inserting key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
@@ -214,7 +216,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     printf("Random probes: %d ", so->num_random_probes);
     printf("Collisions: %d\n", so->num_collisions);
     }
-
+    */
     if ((size_t)so->fill*5 < mask*3) {
         return 0;
     }
@@ -224,7 +226,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     Py_DECREF(key);
 
 
-    if (PyLong_CheckExact(key) ) {
+    if (PyLong_CheckExact(key) && so->fill > 65534) {
     printf("Already found key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
@@ -289,7 +291,79 @@ actually be smaller than the old one.
 static int
 set_table_resize(PySetObject *so, Py_ssize_t minused)
 {
+    setentry *oldtable, *newtable, *entry;
+    Py_ssize_t oldmask = so->mask;
+    size_t newmask;
+    int is_oldtable_malloced;
+    setentry small_copy[PySet_MINSIZE];
 
+    assert(minused >= 0);
+
+    /* Find the smallest table size > minused. */
+    /* XXX speed-up with intrinsics */
+    size_t newsize = PySet_MINSIZE;
+    while (newsize <= (size_t)minused) {
+        newsize <<= 1; // The largest possible value is PY_SSIZE_T_MAX + 1.
+    }
+
+    /* Get space for a new table. */
+    oldtable = so->table;
+    assert(oldtable != NULL);
+    is_oldtable_malloced = oldtable != so->smalltable;
+
+    if (newsize == PySet_MINSIZE) {
+        /* A large table is shrinking, or we can't get any smaller. */
+        newtable = so->smalltable;
+        if (newtable == oldtable) {
+            if (so->fill == so->used) {
+                /* No dummies, so no point doing anything. */
+                return 0;
+            }
+            /* We're not going to resize it, but rebuild the
+               table anyway to purge old dummy entries.
+               Subtle:  This is *necessary* if fill==size,
+               as set_lookkey needs at least one virgin slot to
+               terminate failing searches.  If fill < size, it's
+               merely desirable, as dummies slow searches. */
+            assert(so->fill > so->used);
+            memcpy(small_copy, oldtable, sizeof(small_copy));
+            oldtable = small_copy;
+        }
+    }
+    else {
+        newtable = PyMem_NEW(setentry, newsize);
+        if (newtable == NULL) {
+            PyErr_NoMemory();
+            return -1;
+        }
+    }
+
+    /* Make the set empty, using the new table. */
+    assert(newtable != oldtable);
+    memset(newtable, 0, sizeof(setentry) * newsize);
+    so->mask = newsize - 1;
+    so->table = newtable;
+
+    /* Copy the data over; this is refcount-neutral for active entries;
+       dummy entries aren't copied over, of course */
+    newmask = (size_t)so->mask;
+    if (so->fill == so->used) {
+        for (entry = oldtable; entry <= oldtable + oldmask; entry++) {
+            if (entry->key != NULL) {
+                set_insert_clean(newtable, newmask, entry->key, entry->hash);
+            }
+        }
+    } else {
+        so->fill = so->used;
+        for (entry = oldtable; entry <= oldtable + oldmask; entry++) {
+            if (entry->key != NULL && entry->key != dummy) {
+                set_insert_clean(newtable, newmask, entry->key, entry->hash);
+            }
+        }
+    }
+
+    if (is_oldtable_malloced)
+        PyMem_Free(oldtable);
     return 0;
 }
 
@@ -371,7 +445,6 @@ set_discard_key(PySetObject *so, PyObject *key)
 static void
 set_empty_to_minsize(PySetObject *so)
 {
-
     memset(so->smalltable, 0, sizeof(so->smalltable));
     so->fill = 0;
     so->used = 0;
@@ -937,7 +1010,6 @@ make_new_set(PyTypeObject *type, PyObject *iterable)
 {
     assert(PyType_Check(type));
     PySetObject *so;
-    setentry *newtable;
 
     so = (PySetObject *)type->tp_alloc(type, 0);
     if (so == NULL)
@@ -945,24 +1017,13 @@ make_new_set(PyTypeObject *type, PyObject *iterable)
 
     so->fill = 0;
     so->used = 0;
-    so->mask = PySet_MINSIZE-1; // 65536 - 1
+    so->mask = PySet_MINSIZE - 1;
     so->table = so->smalltable;
+    so->hash = -1;
+    so->finger = 0;
     so->num_linear_probes = 0;
     so->num_random_probes = 0;
     so->num_collisions = 0;
-    //so->mask = 65536-1;
-
-    //newtable = PyMem_NEW(setentry, 65536);
-
-    //so->table = newtable;
-
-    if (so->table == NULL) {
-        Py_DECREF(so);
-        return NULL;
-    }
-    //memset(so->table, NULL, sizeof(setentry) * 65536);  // all entries to NULL
-    so->hash = -1;
-    so->finger = 0;
     so->weakreflist = NULL;
 
     if (iterable != NULL) {
