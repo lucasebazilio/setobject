@@ -46,7 +46,7 @@ static PyObject _dummy_struct;
 
 /* Set this to zero to turn-off linear probing */
 #ifndef LINEAR_PROBES
-#define LINEAR_PROBES 1
+#define LINEAR_PROBES 9
 #endif
 
 /* This must be >= 1 */
@@ -64,23 +64,37 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
     int cmp;
 
 
+    if (PyLong_CheckExact(key)) {
+    printf("Finding key: ");
+    PyObject_Print(key, stdout, 0);
+    printf(" with hash: %llu ", hash);
+    printf("Linear probes: %d ", so->num_linear_probes);
+    printf("Random probes: %d ", so->num_random_probes);
+    printf("Collisions: %d\n", so->num_collisions);
+    }
+
+
     while (1) {
         entry = &so->table[i];
         probes = (i + LINEAR_PROBES <= mask) ? LINEAR_PROBES: 0;
-
         do {
-            if (entry->hash == 0 && entry->key == NULL)
+            if (entry->hash == 0 && entry->key == NULL) {
+                so->num_random_probes++;
                 return entry;
+            }
             if (entry->hash == hash) {
                 PyObject *startkey = entry->key;
                 assert(startkey != dummy);
-                if (startkey == key)
-                    ++so->num_collisions;
+                if (startkey == key) {
+                    so->num_collisions++;
                     return entry;
+                }
                 if (PyUnicode_CheckExact(startkey)
                     && PyUnicode_CheckExact(key)
-                    && _PyUnicode_EQ(startkey, key))
+                    && _PyUnicode_EQ(startkey, key)) {
+                    so->num_random_probes++;
                     return entry;
+                }
                 table = so->table;
                 Py_INCREF(startkey);
                 cmp = PyObject_RichCompareBool(startkey, key, Py_EQ);
@@ -89,19 +103,19 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
                     return NULL;
                 if (table != so->table || entry->key != startkey)
                     return set_lookkey(so, key, hash);
-                if (cmp > 0)
+                if (cmp > 0) {
+                    so->num_random_probes++;
                     return entry;
+                }
                 mask = so->mask;
             }
 
             so->num_linear_probes++;
-            so->num_collisions++;
             entry++;
         } while (probes--);
         perturb >>= PERTURB_SHIFT;
         i = (i * 5 + 1 + perturb) & mask;
         so->num_random_probes++;
-        so->num_collisions++;
     }
 }
 
@@ -142,7 +156,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
                 PyObject *startkey = entry->key;
                 assert(startkey != dummy);
                 if (startkey == key) {
-                    so->num_collisions++;
+                    ++so->num_collisions;
                     goto found_active;
                 }
                 if (PyUnicode_CheckExact(startkey)
@@ -170,10 +184,9 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
             }
             entry++;
             so->num_linear_probes++;
-            so->num_collisions++;
+
         } while (probes--);
         so->num_random_probes++;
-        so->num_collisions++;
         perturb >>= PERTURB_SHIFT;
         i = (i * 5 + 1 + perturb) & mask;
     }
@@ -187,7 +200,12 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     freeslot->hash = hash;
     so->fill++;
 
-    if (so->used == 65530 && PyLong_CheckExact(key)) {
+    if (entry != freeslot) {
+        so->num_collisions++;
+    }
+
+    /*
+    if (PyLong_CheckExact(key)) {
     printf("Inserting key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
@@ -195,7 +213,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     printf("Random probes: %d ", so->num_random_probes);
     printf("Collisions: %d\n", so->num_collisions);
     }
-
+    */
 
     return 0;
 
@@ -205,14 +223,19 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     entry->hash = hash;
     so->fill++;
 
-    if (so->used == 65530 && PyLong_CheckExact(key)) {
+    if (freeslot != NULL) {
+        so->num_collisions++;
+    }
+
+    /*
+    if (PyLong_CheckExact(key)) {
     printf("Inserting key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
     printf("Linear probes: %d ", so->num_linear_probes);
     printf("Random probes: %d ", so->num_random_probes);
     printf("Collisions: %d\n", so->num_collisions);
-    }
+    } */
 
     if ((size_t)so->fill*5 < mask*3) {
         return 0;
@@ -222,7 +245,8 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     found_active:
     Py_DECREF(key);
 
-    if (so->used == 65530 && PyLong_CheckExact(key)) {
+    /*
+    if (PyLong_CheckExact(key)) {
     printf("Already found key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
@@ -231,7 +255,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     printf("Collisions: %d\n", so->num_collisions);
     }
 
-
+    */
     return 0;
 
     comparison_error:
