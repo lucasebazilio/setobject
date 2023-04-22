@@ -63,15 +63,15 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
     int probes;
     int cmp;
 
-
-    if (PyLong_CheckExact(key)) {
+    /*
+    if (PyLong_CheckExact(key) && so->used == 65530) {
     printf("Finding key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
     printf("Linear probes: %d ", so->num_linear_probes);
     printf("Random probes: %d ", so->num_random_probes);
     printf("Collisions: %d\n", so->num_collisions);
-    }
+    }*/
 
 
     while (1) {
