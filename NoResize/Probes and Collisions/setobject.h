@@ -57,6 +57,8 @@ typedef struct {
     Py_ssize_t num_random_probes; /* Total number of random probes so far */
     Py_ssize_t num_collisions; /* Total number of collisions so far */
 
+    //Py_ssize_t counter_lookup; /* Total number of look ups so far */
+
     setentry smalltable[PySet_MINSIZE];
     PyObject *weakreflist;      /* List of weak references */
 } PySetObject;
