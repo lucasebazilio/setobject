@@ -71,8 +71,7 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
     printf("Linear probes: %d ", so->num_linear_probes);
-    printf("Random probes: %d ", so->num_random_probes);
-    printf("Collisions: %d\n", so->num_collisions);
+    printf("Random probes: %d\n", so->num_random_probes);
     } */
 
 
@@ -110,7 +109,7 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
                     return entry;
                 }
                 mask = so->mask;
-                ++so->num_collisions;
+
             }
 
             so->num_linear_probes++;
@@ -159,7 +158,6 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
                 PyObject *startkey = entry->key;
                 assert(startkey != dummy);
                 if (startkey == key) {
-                    ++so->num_collisions;
                     goto found_active;
                 }
                 if (PyUnicode_CheckExact(startkey)
@@ -203,19 +201,14 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     freeslot->hash = hash;
     so->fill++;
 
-    if (entry != freeslot) {
-        so->num_collisions++;
-    }
-
-    /*
     if (PyLong_CheckExact(key) && so->fill == 65530) {
     printf("Inserting key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
     printf("Linear probes: %d ", so->num_linear_probes);
-    printf("Random probes: %d ", so->num_random_probes);
-    printf("Collisions: %d\n", so->num_collisions);
-    }   */
+    printf("Random probes: %d\n", so->num_random_probes);
+
+    }
 
 
     return 0;
@@ -226,19 +219,14 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     entry->hash = hash;
     so->fill++;
 
-    if (freeslot != NULL) {
-        so->num_collisions++;
-    }
-
-    /*
     if (PyLong_CheckExact(key) && so->fill == 65530) {
     printf("Inserting key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
     printf("Linear probes: %d ", so->num_linear_probes);
-    printf("Random probes: %d ", so->num_random_probes);
-    printf("Collisions: %d\n", so->num_collisions);
-    }*/
+    printf("Random probes: %d\n", so->num_random_probes);
+
+    }
 
     if ((size_t)so->fill*5 < mask*3) {
         return 0;
@@ -248,15 +236,14 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     found_active:
     Py_DECREF(key);
 
-    /*
+
     if (PyLong_CheckExact(key) && so->fill == 65530) {
     printf("Already found key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
     printf("Linear probes: %d ", so->num_linear_probes);
-    printf("Random probes: %d ", so->num_random_probes);
-    printf("Collisions: %d\n", so->num_collisions);
-    } */
+    printf("Random probes: %d\n", so->num_random_probes);
+    }
 
 
     return 0;
@@ -974,7 +961,7 @@ make_new_set(PyTypeObject *type, PyObject *iterable)
     so->table = so->smalltable;
     so->num_linear_probes = 0;
     so->num_random_probes = 0;
-    so->num_collisions = 0;
+
     //so->mask = 65536-1;
 
     //newtable = PyMem_NEW(setentry, 65536);
