@@ -46,7 +46,7 @@ static PyObject _dummy_struct;
 
 /* Set this to zero to turn-off linear probing */
 #ifndef LINEAR_PROBES
-#define LINEAR_PROBES 12
+#define LINEAR_PROBES 4
 #endif
 
 /* This must be >= 1 */
@@ -77,7 +77,11 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
 
     while (1) {
         entry = &so->table[i];
-        probes = (i + LINEAR_PROBES <= mask) ? LINEAR_PROBES: 0;
+        //probes = (i + LINEAR_PROBES <= mask) ? LINEAR_PROBES: 0;
+
+        probes = LINEAR_PROBES;
+        if (i + LINEAR_PROBES < mask) {
+
         do {
             if (entry->hash == 0 && entry->key == NULL) {
                 so->num_random_probes++;
@@ -115,6 +119,50 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
             so->num_linear_probes++;
             entry++;
         } while (probes--);
+    }
+
+        else { // (i + LINEAR_PROBES >= mask)
+            do {
+            if (entry->hash == 0 && entry->key == NULL) {
+                so->num_random_probes++;
+                return entry;
+            }
+            if (entry->hash == hash) {
+                PyObject *startkey = entry->key;
+                assert(startkey != dummy);
+                if (startkey == key) {
+
+                    return entry;
+                }
+                if (PyUnicode_CheckExact(startkey)
+                    && PyUnicode_CheckExact(key)
+                    && _PyUnicode_EQ(startkey, key)) {
+                    so->num_random_probes++;
+                    return entry;
+                }
+                table = so->table;
+                Py_INCREF(startkey);
+                cmp = PyObject_RichCompareBool(startkey, key, Py_EQ);
+                Py_DECREF(startkey);
+                if (cmp < 0)
+                    return NULL;
+                if (table != so->table || entry->key != startkey)
+                    return set_lookkey(so, key, hash);
+                if (cmp > 0) {
+                    so->num_random_probes++;
+                    return entry;
+                }
+                mask = so->mask;
+
+            }
+
+            so->num_linear_probes++;
+            entry++;
+            if (++entry > mask) entry = so->table; // entry points to the beginning
+            } while (probes--);
+
+        }
+
         perturb >>= PERTURB_SHIFT;
         i = (i * 5 + 1 + perturb) & mask;
         so->num_random_probes++;
@@ -249,7 +297,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     freeslot->hash = hash;
     so->fill++;
 
-    if (PyLong_CheckExact(key) && so->fill == 55000) {
+    if (PyLong_CheckExact(key) && so->fill == 49152) {
     //printf("Inserting key: ");
     //PyObject_Print(key, stdout, 0);
     //printf(" with hash: %llu ", hash);
@@ -267,7 +315,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     entry->hash = hash;
     so->fill++;
 
-    if (PyLong_CheckExact(key) && so->fill == 55000) {
+    if (PyLong_CheckExact(key) && so->fill == 49152) {
     //printf("Inserting key: ");
     //PyObject_Print(key, stdout, 0);
     //printf(" with hash: %llu ", hash);
@@ -286,7 +334,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     Py_DECREF(key);
 
 
-    if (PyLong_CheckExact(key) && so->fill == 55000) {
+    if (PyLong_CheckExact(key) && so->fill == 50000) {
     printf("Already found key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
