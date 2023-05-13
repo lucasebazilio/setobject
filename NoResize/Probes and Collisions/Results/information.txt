@@ -1,1 +1,11 @@
+When we set B = 10000,
+It is shown the difference in using the circular algorithm against the original one.
+B = 10.000
+                        
+Original: Slots = 55000, Linear: 56601117.32, Random: 5008.932
+Circular: Slots = 55000, Linear: 60123748.19, Random: 4943.58
+
+
+We have a difference in linear probes around 3522630.87
+Also we have a difference in random probes around 65.352
 
