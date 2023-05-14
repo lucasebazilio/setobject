@@ -56,8 +56,6 @@ typedef struct {
     Py_ssize_t num_linear_probes; /* Total number of linear probes so far */
     Py_ssize_t num_random_probes; /* Total number of random probes so far */
 
-    Py_ssize_t counter_lookup; /* Total number of look ups so far */
-
     Py_ssize_t *clusters; /* A dictionary to keep track of the clusters */
 
     setentry smalltable[PySet_MINSIZE];
