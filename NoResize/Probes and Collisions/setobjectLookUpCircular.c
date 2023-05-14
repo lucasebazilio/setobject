@@ -64,14 +64,16 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
     int cmp;
 
 
-    if (PyLong_CheckExact(key)) ++so->counter_lookup; // lookup experiment
+    //if (PyLong_CheckExact(key)) ++so->counter_lookup; // lookup experiment
 
-    if (PyLong_CheckExact(key) && so->counter_lookup % 30000 == 0) {
+    if (PyObject_RichCompareBool(key, PyLong_FromLong(132000), Py_EQ)) {
     //printf("Finding key: ");
     //PyObject_Print(key, stdout, 0);
     //printf(" with hash: %llu ", hash);
     printf("%d ", so->num_linear_probes);
     printf("%d\n", so->num_random_probes);
+
+    //so->counter_lookup = 0; // restablish look up counter
     }
 
 
