@@ -307,7 +307,6 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
         && so->table[i+1].hash == 0 && so->table[i+1].key==NULL) {
         Py_ssize_t *count = &so->clusters[1];
         (*count)++;
-        // clusters[i]++; // Ilegal : New cluster of size 1
     }
     // Element where left-cluster has size >=1
     else if (so->table[i-1].hash != 0 && so->table[i-1].key != NULL
