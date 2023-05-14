@@ -301,7 +301,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     found_unused_or_dummy:
 
     // CLUSTERS MANAGEMENT
-
+    Py_ssize_t j;
     // Element between empty slots
     if (so->table[i-1].hash == 0 && so->table[i-1].key == NULL
         && so->table[i+1].hash == 0 && so->table[i+1].key==NULL) {
@@ -313,10 +313,13 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     else if (so->table[i-1].hash != 0 && so->table[i-1].key != NULL
         && so->table[i+1].hash == 0 && so->table[i+1].key==NULL) {
         int times = 0;
-        for (Py_ssize_t j = i - 1; j >= 1 && (so->table[j].hash != 0 && so->table[j].key != NULL); j--) {
+        for (j = i - 1; j >= 0 && (so->table[j].hash != 0 && so->table[j].key != NULL); j--) {
             ++times;
         }
-        Py_ssize_t *count = &so->clusters[times+1];
+        if (j == 0) {   // Circular Enclosement
+            for (j = so->mask; (so->table[j].hash != 0 && so->table[j].key != NULL); j--) ++times;
+        }
+        Py_ssize_t *count = &so->clusters[times+1]; // + 1 since we include the new element itself
         (*count)++;
     }
     // Element where right-cluster has size >=1
@@ -326,7 +329,10 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
         for (Py_ssize_t j = i + 1; j < so->mask && (so->table[j].hash != 0 && so->table[j].key != NULL); j++) {
             ++times;
         }
-        Py_ssize_t *count = &so->clusters[times+1];
+        if (j == so->mask) {   // Circular Enclosement
+            for (Py_ssize_t j = 0; (so->table[j].hash != 0 && so->table[j].key != NULL); j++) ++times;
+        }
+        Py_ssize_t *count = &so->clusters[times+1]; // + 1 since we include the new element itself
         (*count)++;
     }
     // Element where left-cluster has size p and right-cluster has size q
