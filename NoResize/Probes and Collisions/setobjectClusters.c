@@ -321,6 +321,8 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
         }
         Py_ssize_t *count = &so->clusters[times+1]; // + 1 since we include the new element itself
         (*count)++;
+        count = &so->clusters[times];
+        (*count)--;                                 // Decrement old value
     }
     // Element where right-cluster has size >=1
     else if (so->table[i-1].hash == 0 && so->table[i-1].key == NULL
@@ -334,6 +336,8 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
         }
         Py_ssize_t *count = &so->clusters[times+1]; // + 1 since we include the new element itself
         (*count)++;
+        count = &so->clusters[times];
+        (*count)--;                                 // Decrement old value
     }
     // Element where left-cluster has size p and right-cluster has size q
     else if (so->table[i-1].hash != 0 && so->table[i-1].key != NULL
@@ -393,7 +397,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     entry->hash = hash;
     so->fill++;
 
-    if (PyLong_CheckExact(key) && so->fill == 10000) {
+    if (PyLong_CheckExact(key) && so->fill == 1000) {
     //printf("Inserting key: ");
     //PyObject_Print(key, stdout, 0);
     //printf(" with hash: %llu ", hash);
@@ -419,7 +423,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     Py_DECREF(key);
 
 
-    if (PyLong_CheckExact(key) && so->fill == 10) {
+    if (PyLong_CheckExact(key) && so->fill == 6000) {
     printf("Already found key: ");
     PyObject_Print(key, stdout, 0);
     printf(" with hash: %llu ", hash);
