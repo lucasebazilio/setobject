@@ -80,7 +80,7 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
         //probes = (i + LINEAR_PROBES <= mask) ? LINEAR_PROBES: 0;
 
         probes = LINEAR_PROBES;
-        if (i + LINEAR_PROBES < mask) {
+        if (i + LINEAR_PROBES <= mask) {
 
         do {
             if (entry->hash == 0 && entry->key == NULL) {
@@ -121,7 +121,7 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
         } while (probes--);
     }
 
-        else { // (i + LINEAR_PROBES >= mask)
+        else { // (i + LINEAR_PROBES > mask)
             do {
             if (entry->hash == 0 && entry->key == NULL) {
                 so->num_random_probes++;
@@ -200,7 +200,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
 
         probes = LINEAR_PROBES;
 
-        if (i + LINEAR_PROBES < mask) {
+        if (i + LINEAR_PROBES <= mask) {
 
         do {
             if (entry->hash == 0 && entry->key == NULL) {
@@ -242,7 +242,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
 
         }
 
-        else { // (i + LINEAR_PROBES >= mask)
+        else { // (i + LINEAR_PROBES > mask)
             do {
             if (entry->hash == 0 && entry->key == NULL) {
                 goto found_unused_or_dummy;
