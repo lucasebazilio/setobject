@@ -97,7 +97,7 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
                 if (PyUnicode_CheckExact(startkey)
                     && PyUnicode_CheckExact(key)
                     && _PyUnicode_EQ(startkey, key)) {
-                    so->num_random_probes++;
+                    
                     return entry;
                 }
                 table = so->table;
@@ -109,7 +109,7 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
                 if (table != so->table || entry->key != startkey)
                     return set_lookkey(so, key, hash);
                 if (cmp > 0) {
-                    so->num_random_probes++;
+                    
                     return entry;
                 }
                 mask = so->mask;
@@ -137,7 +137,7 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
                 if (PyUnicode_CheckExact(startkey)
                     && PyUnicode_CheckExact(key)
                     && _PyUnicode_EQ(startkey, key)) {
-                    so->num_random_probes++;
+                    
                     return entry;
                 }
                 table = so->table;
@@ -149,7 +149,6 @@ set_lookkey(PySetObject *so, PyObject *key, Py_hash_t hash)
                 if (table != so->table || entry->key != startkey)
                     return set_lookkey(so, key, hash);
                 if (cmp > 0) {
-                    so->num_random_probes++;
                     return entry;
                 }
                 mask = so->mask;
