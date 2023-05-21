@@ -404,17 +404,18 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     entry->hash = hash;
     so->fill++;
 
-    if (PyLong_CheckExact(key) && so->fill == 500) {
+    if (PyLong_CheckExact(key) && so->fill == 1000) {
     //printf("Inserting key: ");
     //PyObject_Print(key, stdout, 0);
     //printf(" with hash: %llu ", hash);
     //printf("%d ", so->num_linear_probes);
     //printf("%d\n", so->num_random_probes);
 
-    printf("Number of clusters of each size:\n");
+    //printf("Number of clusters of each size:\n");
     for (Py_ssize_t j = 0; j <= so->mask; j++) {
         if (so->clusters[j] > 0) {
-            printf("Cluster size %zd: %zd\n", j, so->clusters[j]);
+            //printf("Cluster size %zd: %zd\n", j, so->clusters[j]);
+            printf("%zd %zd\n", j, so->clusters[j]);
         }
     }
 
