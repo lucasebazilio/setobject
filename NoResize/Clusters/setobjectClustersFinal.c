@@ -304,10 +304,11 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
 
     Py_ssize_t j;
 
-    // Element between empty slots
+    
 
     if (i != so->mask && i != 0) {  // We are in a general case
 
+        // Element between empty slots
         if (so->table[i-1].hash == 0 && so->table[i-1].key == NULL
             && so->table[i+1].hash == 0 && so->table[i+1].key==NULL) {
             Py_ssize_t *count = &so->clusters[2];
