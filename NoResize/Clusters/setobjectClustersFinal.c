@@ -46,7 +46,7 @@ static PyObject _dummy_struct;
 
 /* Set this to zero to turn-off linear probing */
 #ifndef LINEAR_PROBES
-#define LINEAR_PROBES 6
+#define LINEAR_PROBES 10
 #endif
 
 /* This must be >= 1 */
@@ -304,7 +304,8 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
 
     Py_ssize_t j;
 
-    
+    i = entry - so->table; // Update the variable i to be the position where entry is pointing to after probes
+
 
     if (i != so->mask && i != 0) {  // We are in a general case
 
