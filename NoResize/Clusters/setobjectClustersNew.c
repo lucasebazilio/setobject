@@ -46,7 +46,7 @@ static PyObject _dummy_struct;
 
 /* Set this to zero to turn-off linear probing */
 #ifndef LINEAR_PROBES
-#define LINEAR_PROBES 6
+#define LINEAR_PROBES 1
 #endif
 
 /* This must be >= 1 */
@@ -245,6 +245,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
         else { // (i + LINEAR_PROBES > mask)
             do {
             if (entry->hash == 0 && entry->key == NULL) {
+                i = (entry - so->table) & so->mask;
                 goto found_unused_or_dummy;
             }
             if (entry->hash == hash) {
@@ -302,20 +303,23 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
 
     // CLUSTERS MANAGEMENT
 
+    size_t k = (entry - so->table) & so->mask; // Set the variable k to be the position where entry is pointing to after probes
+
+
     Py_ssize_t j;
     // Element between empty slots
-    if (so->table[i-1].hash == 0 && so->table[i-1].key == NULL
-        && so->table[i+1].hash == 0 && so->table[i+1].key==NULL) {
+    if (so->table[(k-1)%so->mask].hash == 0 && so->table[(k-1)%so->mask].key == NULL
+        && so->table[(k+1)%so->mask].hash == 0 && so->table[(k+1)%so->mask].key==NULL) {
         Py_ssize_t *count = &so->clusters[2];
         (*count)++;
         count = &so->clusters[1];
         (*count) = (*count) - 2;
     }
     // Element where left-cluster has size >=1
-    else if (so->table[i-1].hash != 0 && so->table[i-1].key != NULL
-        && so->table[i+1].hash == 0 && so->table[i+1].key==NULL) {
+    else if (so->table[(k-1)%so->mask].hash != 0 && so->table[(k-1)%so->mask].key != NULL
+        && so->table[(k+1)%so->mask].hash == 0 && so->table[(k+1)%so->mask].key==NULL) {
         int p = 1;
-        for (j = i - 1; j >= 0 && (so->table[j].hash != 0 && so->table[j].key != NULL); j--) {
+        for (j = (k - 1)%so->mask; j >= 0 && (so->table[j].hash != 0 && so->table[j].key != NULL); j--) {
             ++p;
         }
         if (j == 0) {   // Circular Enclosement
@@ -329,10 +333,10 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
         (*count)--;
     }
     // Element where right-cluster has size >=1
-    else if (so->table[i-1].hash == 0 && so->table[i-1].key == NULL
-        && so->table[i+1].hash != 0 && so->table[i+1].key!=NULL) {
+    else if (so->table[(k-1)%so->mask].hash == 0 && so->table[(k-1)%so->mask].key == NULL
+        && so->table[(k+1)%so->mask].hash != 0 && so->table[(k+1)%so->mask].key!=NULL) {
         int q = 1;
-        for (Py_ssize_t j = i + 1; j < so->mask && (so->table[j].hash != 0 && so->table[j].key != NULL); j++) {
+        for (Py_ssize_t j = (k + 1)%so->mask; j < so->mask && (so->table[j].hash != 0 && so->table[j].key != NULL); j++) {
             ++q;
         }
         if (j == so->mask) {   // Circular Enclosement
@@ -347,24 +351,40 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
 
     }
     // Element where left-cluster has size p and right-cluster has size q
-    else if (so->table[i-1].hash != 0 && so->table[i-1].key != NULL
-        && so->table[i+1].hash != 0 && so->table[i+1].key!=NULL) {
-        int p = 1;
-        int q = 1;
+    else if (so->table[(k-1)%so->mask].hash != 0 && so->table[(k-1)%so->mask].key != NULL
+        && so->table[(k+1)%so->mask].hash != 0 && so->table[(k+1)%so->mask].key!=NULL) {
+        int p = 0;
+        int q = 0;
         // Calculate p (Move to the left)
-        for (Py_ssize_t j = i - 1; j >= 1 && (so->table[j].hash != 0 && so->table[j].key != NULL); j--) {
+        for (Py_ssize_t j = k; j >= 1 && (so->table[j].hash != 0 && so->table[j].key != NULL); j--) {
             ++p;
+            if (j == k) --p;
         }
+
+        if (j == 0) {   // Circular Enclosement
+            ++p;    // Circular Jump
+            for (j = so->mask; (so->table[j].hash != 0 && so->table[j].key != NULL); j--) ++p;
+        }
+
         // Calculate q (Move to the right)
-        for (Py_ssize_t j = i + 1; j < so->mask && (so->table[j].hash != 0 && so->table[j].key != NULL); j++) {
+        for (Py_ssize_t j = k; j < so->mask && (so->table[j].hash != 0 && so->table[j].key != NULL); j++) {
             ++q;
+            if (j == k) --q;
         }
-        // Increase clusters[p+q]   ,  decrease clusters[p]  , decrease clusters[q]
-        Py_ssize_t *count = &so->clusters[p+q];
+
+
+        if (j == so->mask) {   // Circular Enclosement
+            ++q;    // Circular Jump
+            for (Py_ssize_t j = 0; (so->table[j].hash != 0 && so->table[j].key != NULL); j++) ++q;
+        }
+
+
+        // Increase clusters[p+q+2]   ,  decrease clusters[p+1]  , decrease clusters[q+1]
+        Py_ssize_t *count = &so->clusters[p+q+2];
         (*count)++;
-        count = &so->clusters[p];
+        count = &so->clusters[p+1];
         (*count)--;
-        count = &so->clusters[q];
+        count = &so->clusters[q+1];
         (*count)--;
     }
 
@@ -404,7 +424,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     entry->hash = hash;
     so->fill++;
 
-    if (PyLong_CheckExact(key) && so->fill == 1000) {
+    if (PyLong_CheckExact(key) && so->fill == 13107) {
     //printf("Inserting key: ");
     //PyObject_Print(key, stdout, 0);
     //printf(" with hash: %llu ", hash);
