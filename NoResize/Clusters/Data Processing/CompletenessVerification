@@ -1,0 +1,22 @@
+total_sum = 0
+
+while True:
+    input_str = input()
+    if input_str == 'q':
+        break
+
+    columns = input_str.split(',')
+    if len(columns) != 3:
+        print("Invalid input format. Please enter three comma-separated values.")
+        continue
+
+    try:
+        column2 = int(columns[1])
+        column3 = float(columns[2])
+        weighted_sum = column2 * column3
+        total_sum += weighted_sum
+    except ValueError:
+        print("Invalid input values. Please enter a valid integer and float.")
+        continue
+
+print("Total Weighted Sum:", total_sum)
