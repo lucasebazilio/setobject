@@ -46,7 +46,7 @@ static PyObject _dummy_struct;
 
 /* Set this to zero to turn-off linear probing */
 #ifndef LINEAR_PROBES
-#define LINEAR_PROBES 1
+#define LINEAR_PROBES 12
 #endif
 
 /* This must be >= 1 */
@@ -336,7 +336,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     else if (so->table[(k-1)%so->mask].hash == 0 && so->table[(k-1)%so->mask].key == NULL
         && so->table[(k+1)%so->mask].hash != 0 && so->table[(k+1)%so->mask].key!=NULL) {
         int q = 1;
-        for (Py_ssize_t j = (k + 1)%so->mask; j < so->mask && (so->table[j].hash != 0 && so->table[j].key != NULL); j++) {
+        for (j = (k + 1)%so->mask; j < so->mask && (so->table[j].hash != 0 && so->table[j].key != NULL); j++) {
             ++q;
         }
         if (j == so->mask) {   // Circular Enclosement
@@ -356,7 +356,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
         int p = 0;
         int q = 0;
         // Calculate p (Move to the left)
-        for (Py_ssize_t j = k; j >= 1 && (so->table[j].hash != 0 && so->table[j].key != NULL); j--) {
+        for (j = k; j >= 1 && (so->table[j].hash != 0 && so->table[j].key != NULL); j--) {
             ++p;
             if (j == k) --p;
         }
@@ -367,7 +367,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
         }
 
         // Calculate q (Move to the right)
-        for (Py_ssize_t j = k; j < so->mask && (so->table[j].hash != 0 && so->table[j].key != NULL); j++) {
+        for (j = k; j < so->mask && (so->table[j].hash != 0 && so->table[j].key != NULL); j++) {
             ++q;
             if (j == k) --q;
         }
@@ -375,7 +375,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
 
         if (j == so->mask) {   // Circular Enclosement
             ++q;    // Circular Jump
-            for (Py_ssize_t j = 0; (so->table[j].hash != 0 && so->table[j].key != NULL); j++) ++q;
+            for (j = 0; (so->table[j].hash != 0 && so->table[j].key != NULL); j++) ++q;
         }
 
 
@@ -424,7 +424,7 @@ set_add_entry(PySetObject *so, PyObject *key, Py_hash_t hash)
     entry->hash = hash;
     so->fill++;
 
-    if (PyLong_CheckExact(key) && so->fill == 13107) {
+    if (PyLong_CheckExact(key) && so->fill == 45875) {
     //printf("Inserting key: ");
     //PyObject_Print(key, stdout, 0);
     //printf(" with hash: %llu ", hash);
@@ -1171,7 +1171,7 @@ make_new_set(PyTypeObject *type, PyObject *iterable)
 {
     assert(PyType_Check(type));
     PySetObject *so;
-    setentry *newtable;
+    //setentry *newtable;
 
     so = (PySetObject *)type->tp_alloc(type, 0);
     if (so == NULL)
