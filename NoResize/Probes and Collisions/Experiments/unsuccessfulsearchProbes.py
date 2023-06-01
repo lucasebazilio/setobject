@@ -4,7 +4,7 @@ num_runs = 400
 
 for i in range(num_runs):
     # Create a set with random even elements
-    data = set(random.sample(range(0, 200000, 2),1999))
+    data = set(random.sample(range(0, 200000, 2),2000))
 
     times = 0
     while (times < 2000):   # Perform S searches
