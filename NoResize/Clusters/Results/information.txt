@@ -1,1 +1,8 @@
+In this directory there are two folders.
 
+Firstly, Clusters Formation, on which it can be seen, for different values of the LINEAR_PROBES parameter (B),
+the formation of clusters as we increase the number of slots (S) filled in the hash table.
+
+Secondly, Clusters Probability, which contains the normalized results of Clusters Formation.
+Hence we can explore the magnitude of probability. That is, given an inserted element in the hash table,
+what is the probability of landing in a cluster of a specific size.
